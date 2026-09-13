@@ -17,7 +17,9 @@ class CartService:
     async def get_user_cart(self, user_id: int) -> Cart:
         return await self.cart_repo.get_or_create_active_cart(user_id)
 
-    async def add_item_to_cart(self, user_id: int, product_id: int, quantity: int) -> CartItem:
+    # app/services/cart_service.py in add_item_to_cart:
+
+    async def add_item_to_cart(self, user_id: int, product_id: int, quantity: int) -> CartItem | None:
         product = await self.product_repo.get_by_id(product_id)
         if not product:
             raise HTTPException(
@@ -30,8 +32,15 @@ class CartService:
         current_qty = existing_item.quantity if existing_item else 0
         total_requested = current_qty + quantity
 
-        # Soft validation against available stock (intent stage)
-        if product.available_stock < total_requested:
+        # If item doesn't exist yet, initial quantity must be positive
+        if not existing_item and quantity <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Quantity must be greater than zero",
+            )
+
+        # Capacity check against available stock
+        if total_requested > product.available_stock:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(

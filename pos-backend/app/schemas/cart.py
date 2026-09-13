@@ -5,8 +5,8 @@ from app.schemas.product import ProductResponse
 
 
 class CartItemAdd(BaseModel):
-    product_id: int = Field(..., gt=0)
-    quantity: int = Field(..., gt=0, description="Quantity must be at least 1")
+    product_id: int
+    quantity: int = Field(..., description="Quantity delta (can be negative to decrement)")
 
 
 class CartItemUpdate(BaseModel):

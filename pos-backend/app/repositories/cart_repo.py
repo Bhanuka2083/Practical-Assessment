@@ -37,13 +37,25 @@ class CartRepository(BaseRepository):
         return result.scalar_one_or_none()
 
     async def add_or_update_item(self, cart_id: int, product_id: int, quantity: int) -> CartItem:
+        """
+        Adds item or increments existing item quantity.
+        If quantity <= 0 after update, removes the item from the cart.
+        """
         item = await self.get_item(cart_id, product_id)
         if item:
             item.quantity += quantity
+            if item.quantity <= 0:
+                await self.session.delete(item)
+                await self.session.flush()
+                return item
         else:
+            if quantity <= 0:
+                raise ValueError("Initial item quantity must be greater than zero")
             item = CartItem(cart_id=cart_id, product_id=product_id, quantity=quantity)
             self.session.add(item)
+
         await self.session.flush()
+        await self.session.refresh(item)
         return item
 
     async def remove_item(self, cart_id: int, product_id: int) -> bool:

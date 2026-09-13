@@ -33,9 +33,6 @@ class OrderService:
         cart_items_map = {item.product_id: item.quantity for item in cart.items}
         product_ids = sorted(list(cart_items_map.keys()))
 
-        # Safe transaction entry
-        # txn = self.session.begin_nested() if self.session.in_transaction() else self.session.begin()
-        # async with txn:
         async with atomic_transaction(self.session):
             products = await self.product_repo.get_products_for_update(product_ids)
 
@@ -51,8 +48,6 @@ class OrderService:
                 
                 # Check fresh locked stock
                 if product.available_stock < requested_qty:
-                    # ✅ Do NOT call session.rollback() here!
-                    # Raising HTTPException causes atomic_transaction to auto-rollback
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
                         detail=(
@@ -81,8 +76,8 @@ class OrderService:
                     unit_price=Decimal(product.price),
                 )
 
-            await self.cart_repo.clear_cart_items(cart.id)
-            cart.status = CartStatus.ACTIVE
+            # await self.cart_repo.clear_cart_items(cart.id)
+            # cart.status = CartStatus.ACTIVE
 
         # Ensure changes are fully committed to database
         await self.session.commit()
@@ -106,6 +101,9 @@ class OrderService:
 
             if order.user_id != user_id:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this order")
+
+            if order.status in (OrderStatus.CANCELLED, OrderStatus.EXPIRED):
+                return order
 
             if order.status != OrderStatus.RESERVED:
                 raise HTTPException(
