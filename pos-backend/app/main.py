@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import logging
 from collections.abc import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -10,6 +10,15 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import engine
 from app.workers.sweeper import sweeper
+
+import secrets
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from fastapi.openapi.utils import get_openapi
+
+from app.core.config import settings
+from app.api.v1.router import api_router
+
 
 # Configure structured logging
 logging.basicConfig(
@@ -55,9 +64,9 @@ def create_application() -> FastAPI:
     """Application factory configuring routes, middleware, and documentation."""
     app = FastAPI(
         title=settings.PROJECT_NAME,
-        openapi_url=f"{settings.API_V1_STR}/openapi.json",
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
         lifespan=lifespan,
         version="1.0.0"
     )
@@ -83,7 +92,38 @@ def create_application() -> FastAPI:
         ],
     )
 
-    app.include_router(api_router, prefix=settings.API_V1_STR)
+    security = HTTPBasic()
+
+    def authenticate_docs(credentials: HTTPBasicCredentials = Depends(security)):
+        correct_username = secrets.compare_digest(credentials.username, settings.DOCS_USERNAME)
+        correct_password = secrets.compare_digest(credentials.password, settings.DOCS_PASSWORD)
+
+        if not (correct_username and correct_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials for API documentation",
+                headers={"WWW-Authenticate": "Basic"},
+            )
+        return credentials.username
+
+    @app.get("/api/v1/openapi.json", include_in_schema=False)
+    async def get_protected_openapi(username: str = Depends(authenticate_docs)):
+        return get_openapi(title=app.title, version="1.0.0", routes=app.routes)
+
+    @app.get("/docs", include_in_schema=False)
+    async def get_protected_swagger_ui(username: str = Depends(authenticate_docs)):
+        return get_swagger_ui_html(
+            openapi_url="/api/v1/openapi.json",
+            title=f"{app.title} - Swagger UI",
+        )
+
+    @app.get("/redoc", include_in_schema=False)
+    async def get_protected_redoc(username: str = Depends(authenticate_docs)):
+        return get_redoc_html(
+            openapi_url="/api/v1/openapi.json",
+            title=f"{app.title} - ReDoc",
+        )
+
 
     @app.get("/health", tags=["Health"])
     async def health_check():
@@ -93,6 +133,8 @@ def create_application() -> FastAPI:
             "project": settings.PROJECT_NAME,
             "version": "1.0.0",
         }
+
+    app.include_router(api_router, prefix=settings.API_V1_STR)
 
     return app
 

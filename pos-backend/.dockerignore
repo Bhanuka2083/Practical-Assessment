@@ -17,3 +17,5 @@ test_*.py
 Dockerfile*
 docker-compose*.yml
 README.md
+*.md
+!README.md

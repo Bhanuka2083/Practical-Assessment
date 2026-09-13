@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 
 from app.models.product import Product
 from app.repositories.base_repo import BaseRepository
@@ -63,10 +64,25 @@ class ProductRepository(BaseRepository):
         await self.session.flush()
         await self.session.refresh(product)
 
-    async def update(self, product: Product, **kwargs) -> Product:
-        for field, value in kwargs.items():
-            if value is not None and hasattr(product, field):
-                setattr(product, field, value)
+    async def update(
+        self,
+        product: Product,
+        name: Optional[str] = None,
+        price: Optional[float | Decimal] = None,
+        total_stock: Optional[int] = None,
+    ) -> Product:
+        if name is not None:
+            product.name = name
+        if price is not None:
+            product.price = Decimal(str(price))
+        if total_stock is not None:
+            if total_stock < product.reserved_stock:
+                raise ValueError(
+                    f"Total stock cannot be less than active reservations ({product.reserved_stock})"
+                )
+            product.total_stock = total_stock
+            # product.available_stock = product.total_stock - product.reserved_stock
+
         await self.session.flush()
         await self.session.refresh(product)
         return product

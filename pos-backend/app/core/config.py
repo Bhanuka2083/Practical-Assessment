@@ -17,8 +17,17 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "POS System API"
     API_V1_STR: str = "/api/v1"
 
+    DOCS_USERNAME: str = "admin"
+    DOCS_PASSWORD: str = "supersecretposdocs@12345678"
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
+
     # PostgreSQL Connection Parameters
-    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_SERVER: str = "postgres"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = os.environ.get("POSTGRES_PASSWORD")

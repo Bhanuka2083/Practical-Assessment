@@ -1,3 +1,4 @@
+// src/components/AdminPanel.tsx
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,32 +8,30 @@ import {
   deleteProduct,
 } from "../api/products";
 import type { Product } from "../types";
-import {
-  PlusCircle,
-  Trash2,
-  Edit3,
-  Check,
-  X,
-  RefreshCw,
-  Layers,
-} from "lucide-react";
+import { PlusCircle, Trash2, Edit3, Check, X, Layers } from "lucide-react";
 
 interface Props {
   onClose: () => void;
 }
 
+interface EditFormState {
+  id: number;
+  name: string;
+  price: number;
+  total_stock: number;
+}
+
 export const AdminPanel: React.FC<Props> = ({ onClose }) => {
   const queryClient = useQueryClient();
 
-  // New product form state
+  // Create form state
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [totalStock, setTotalStock] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Edit inline stock state
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editStockValue, setEditStockValue] = useState<number>(0);
+  // Unified inline row editing state
+  const [editingRow, setEditingRow] = useState<EditFormState | null>(null);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -63,16 +62,18 @@ export const AdminPanel: React.FC<Props> = ({ onClose }) => {
       payload,
     }: {
       id: number;
-      payload: { total_stock: number };
+      payload: { name?: string; price?: number; total_stock?: number };
     }) => updateProduct(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      setEditingId(null);
+      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      setEditingRow(null);
+      setErrorMsg(null);
     },
     onError: (err: any) => {
       const detail = err.response?.data?.detail;
       setErrorMsg(
-        typeof detail === "string" ? detail : "Failed to update stock",
+        typeof detail === "string" ? detail : "Failed to update product",
       );
     },
   });
@@ -91,6 +92,36 @@ export const AdminPanel: React.FC<Props> = ({ onClose }) => {
     },
   });
 
+  const handleStartEdit = (prod: Product) => {
+    setEditingRow({
+      id: prod.id,
+      name: prod.name,
+      price: Number(prod.price),
+      total_stock: prod.total_stock,
+    });
+  };
+
+  const handleSaveEdit = (id: number) => {
+    if (!editingRow) return;
+    if (
+      !editingRow.name.trim() ||
+      editingRow.price <= 0 ||
+      editingRow.total_stock < 0
+    ) {
+      setErrorMsg("Invalid name, price, or total stock value.");
+      return;
+    }
+
+    updateMutation.mutate({
+      id,
+      payload: {
+        name: editingRow.name.trim(),
+        price: editingRow.price,
+        total_stock: editingRow.total_stock,
+      },
+    });
+  };
+
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const p = parseFloat(price);
@@ -102,15 +133,6 @@ export const AdminPanel: React.FC<Props> = ({ onClose }) => {
       return;
     }
     createMutation.mutate({ name: name.trim(), price: p, total_stock: s });
-  };
-
-  const handleStartEdit = (prod: Product) => {
-    setEditingId(prod.id);
-    setEditStockValue(prod.total_stock);
-  };
-
-  const handleSaveEdit = (id: number) => {
-    updateMutation.mutate({ id, payload: { total_stock: editStockValue } });
   };
 
   return (
@@ -125,8 +147,7 @@ export const AdminPanel: React.FC<Props> = ({ onClose }) => {
                 Inventory & Product Management
               </h2>
               <p className="text-xs text-slate-400">
-                Add items, adjust warehouse quotas, and audit real-time
-                reservations
+                Update item names, pricing, and live warehouse inventory
               </p>
             </div>
           </div>
@@ -196,9 +217,9 @@ export const AdminPanel: React.FC<Props> = ({ onClose }) => {
               <tr>
                 <th className="py-3 px-4">ID</th>
                 <th className="py-3 px-4">Name</th>
-                <th className="py-3 px-4">Price</th>
+                <th className="py-3 px-4">Price ($)</th>
                 <th className="py-3 px-4 text-center">Total Stock</th>
-                <th className="py-3 px-4 text-center">Reserved (Hold)</th>
+                <th className="py-3 px-4 text-center">Reserved</th>
                 <th className="py-3 px-4 text-center">Available</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
@@ -217,111 +238,159 @@ export const AdminPanel: React.FC<Props> = ({ onClose }) => {
                   </td>
                 </tr>
               ) : (
-                products.map((prod) => (
-                  <tr
-                    key={prod.id}
-                    className="hover:bg-slate-800/30 transition-colors"
-                  >
-                    <td className="py-3 px-4 font-mono text-xs text-slate-500">
-                      #{prod.id}
-                    </td>
-                    <td className="py-3 px-4 font-medium text-white">
-                      {prod.name}
-                    </td>
-                    <td className="py-3 px-4 font-mono text-emerald-400 font-semibold">
-                      ${Number(prod.price).toFixed(2)}
-                    </td>
+                products.map((prod) => {
+                  const isEditing = editingRow?.id === prod.id;
 
-                    {/* Total Stock / Inline Editor */}
-                    <td className="py-3 px-4 text-center font-mono">
-                      {editingId === prod.id ? (
-                        <div className="flex items-center justify-center gap-1.5">
+                  return (
+                    <tr
+                      key={prod.id}
+                      className="hover:bg-slate-800/30 transition-colors"
+                    >
+                      <td className="py-3 px-4 font-mono text-xs text-slate-500">
+                        #{prod.id}
+                      </td>
+
+                      {/* Name Column */}
+                      <td className="py-3 px-4">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editingRow.name}
+                            onChange={(e) =>
+                              setEditingRow({
+                                ...editingRow,
+                                name: e.target.value,
+                              })
+                            }
+                            className="bg-slate-800 border border-indigo-500 rounded px-2 py-1 text-white text-sm w-full max-w-[180px]"
+                          />
+                        ) : (
+                          <span className="font-medium text-white">
+                            {prod.name}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Price Column */}
+                      <td className="py-3 px-4">
+                        {isEditing ? (
                           <input
                             type="number"
-                            value={editStockValue}
+                            step="0.01"
+                            value={editingRow.price}
                             onChange={(e) =>
-                              setEditStockValue(
-                                parseInt(e.target.value, 10) || 0,
-                              )
+                              setEditingRow({
+                                ...editingRow,
+                                price: parseFloat(e.target.value) || 0,
+                              })
                             }
-                            className="w-16 bg-slate-800 border border-indigo-500 rounded px-1.5 py-0.5 text-center text-white text-xs font-mono"
+                            className="w-24 bg-slate-800 border border-indigo-500 rounded px-2 py-1 text-white text-sm font-mono"
                           />
-                          <button
-                            onClick={() => handleSaveEdit(prod.id)}
-                            className="text-emerald-400 hover:text-emerald-300 p-1"
-                          >
-                            <Check size={14} />
-                          </button>
-                          <button
-                            onClick={() => setEditingId(null)}
-                            className="text-slate-400 hover:text-slate-300 p-1"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-2">
+                        ) : (
+                          <span className="font-mono text-emerald-400 font-semibold">
+                            ${Number(prod.price).toFixed(2)}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Total Stock Column */}
+                      <td className="py-3 px-4 text-center font-mono">
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            value={editingRow.total_stock}
+                            onChange={(e) =>
+                              setEditingRow({
+                                ...editingRow,
+                                total_stock: parseInt(e.target.value, 10) || 0,
+                              })
+                            }
+                            className="w-20 bg-slate-800 border border-indigo-500 rounded px-2 py-1 text-center text-white text-sm font-mono"
+                          />
+                        ) : (
                           <span className="text-white font-bold">
                             {prod.total_stock}
                           </span>
-                          <button
-                            onClick={() => handleStartEdit(prod)}
-                            className="text-slate-500 hover:text-indigo-400 transition-colors p-1"
-                            title="Adjust Total Stock"
-                          >
-                            <Edit3 size={13} />
-                          </button>
-                        </div>
-                      )}
-                    </td>
+                        )}
+                      </td>
 
-                    {/* Reserved Stock */}
-                    <td className="py-3 px-4 text-center font-mono">
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          prod.reserved_stock > 0
-                            ? "bg-amber-950/60 text-amber-300 border border-amber-800/60"
-                            : "text-slate-500"
-                        }`}
-                      >
-                        {prod.reserved_stock}
-                      </span>
-                    </td>
+                      {/* Reserved Stock */}
+                      <td className="py-3 px-4 text-center font-mono">
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-bold ${
+                            prod.reserved_stock > 0
+                              ? "bg-amber-950/60 text-amber-300 border border-amber-800/60"
+                              : "text-slate-500"
+                          }`}
+                        >
+                          {prod.reserved_stock}
+                        </span>
+                      </td>
 
-                    {/* Available Stock */}
-                    <td className="py-3 px-4 text-center font-mono">
-                      <span
-                        className={`px-2.5 py-1 rounded text-xs font-bold ${
-                          prod.available_stock <= 0
-                            ? "bg-rose-950/60 text-rose-300 border border-rose-800/60"
-                            : "bg-emerald-950/60 text-emerald-300 border border-emerald-800/60"
-                        }`}
-                      >
-                        {prod.available_stock}
-                      </span>
-                    </td>
+                      {/* Available Stock */}
+                      <td className="py-3 px-4 text-center font-mono">
+                        <span
+                          className={`px-2.5 py-1 rounded text-xs font-bold ${
+                            prod.available_stock <= 0
+                              ? "bg-rose-950/60 text-rose-300 border border-rose-800/60"
+                              : "bg-emerald-950/60 text-emerald-300 border border-emerald-800/60"
+                          }`}
+                        >
+                          {prod.available_stock}
+                        </span>
+                      </td>
 
-                    {/* Delete Action */}
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `Are you sure you want to delete "${prod.name}"?`,
-                            )
-                          ) {
-                            deleteMutation.mutate(prod.id);
-                          }
-                        }}
-                        disabled={deleteMutation.isPending}
-                        className="text-rose-400 hover:text-rose-300 p-1.5 hover:bg-rose-950/30 rounded-lg transition-colors"
-                        title="Delete Product"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      {/* Actions */}
+                      <td className="py-3 px-4 text-right">
+                        {isEditing ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleSaveEdit(prod.id)}
+                              disabled={updateMutation.isPending}
+                              className="text-emerald-400 hover:text-emerald-300 p-1.5 hover:bg-emerald-950/40 rounded transition-colors"
+                              title="Save changes"
+                            >
+                              <Check size={16} />
+                            </button>
+                            <button
+                              onClick={() => setEditingRow(null)}
+                              className="text-slate-400 hover:text-slate-300 p-1.5 hover:bg-slate-800 rounded transition-colors"
+                              title="Cancel"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleStartEdit(prod)}
+                              className="text-slate-400 hover:text-indigo-400 p-1.5 hover:bg-slate-800 rounded-lg transition-colors"
+                              title="Edit product"
+                            >
+                              <Edit3 size={15} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (
+                                  confirm(
+                                    `Are you sure you want to delete "${prod.name}"?`,
+                                  )
+                                ) {
+                                  deleteMutation.mutate(prod.id);
+                                }
+                              }}
+                              disabled={deleteMutation.isPending}
+                              className="text-rose-400 hover:text-rose-300 p-1.5 hover:bg-rose-950/30 rounded-lg transition-colors"
+                              title="Delete product"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -329,7 +398,7 @@ export const AdminPanel: React.FC<Props> = ({ onClose }) => {
 
         {/* Footer */}
         <div className="flex justify-between items-center text-xs text-slate-400 pt-2 border-t border-slate-800">
-          <span>Real-time polling active (every 3 seconds).</span>
+          <span>Live catalog sync active</span>
           <button
             onClick={onClose}
             className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl transition-colors"

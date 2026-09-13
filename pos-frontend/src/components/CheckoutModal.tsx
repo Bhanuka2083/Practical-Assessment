@@ -121,17 +121,17 @@ export const CheckoutModal: React.FC<Props> = ({ order, onClose }) => {
               ${Number(order.total_amount).toFixed(2)}
             </span>
           </div>
-          <div className="text-xs text-slate-400 bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex items-center gap-2">
+          {/* <div className="text-xs text-slate-400 bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex items-center gap-2">
             <ShieldCheck size={14} className="text-indigo-400 shrink-0" />
             <span className="truncate">
               Idempotency-Key:{" "}
               <span className="font-mono text-slate-200">{idempotencyKey}</span>
             </span>
-          </div>
+          </div> */}
         </div>
 
         {/* Payment Outcome Simulator */}
-        {!paymentResult && !isExpired && (
+        {/* {!paymentResult && !isExpired && (
           <div className="bg-slate-900/70 border border-slate-700/60 p-4 rounded-xl space-y-3 my-2">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Simulate Gateway Response
@@ -159,7 +159,7 @@ export const CheckoutModal: React.FC<Props> = ({ order, onClose }) => {
               )}
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Results Feedback */}
         {paymentResult && (
