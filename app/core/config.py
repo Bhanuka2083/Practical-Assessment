@@ -14,14 +14,14 @@ class Settings(BaseSettings):
     )
 
     # API Metadata
-    PROJECT_NAME: str = "Concurrency-Safe POS Backend"
+    PROJECT_NAME: str = "POS Backend"
     API_V1_STR: str = "/api/v1"
 
     # PostgreSQL Connection Parameters
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_PASSWORD: str = os.environ.get("POSTGRES_PASSWORD")
     POSTGRES_DB: str = "pos_db"
 
     # Security

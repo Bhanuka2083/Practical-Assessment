@@ -39,4 +39,22 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             yield session
         finally:
             await session.close()
-            
+
+
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def atomic_transaction(session: AsyncSession):
+    """
+    Guarantees safe transaction boundaries.
+    Uses SAVEPOINT (begin_nested) if a transaction is already active,
+    preventing 'transaction already begun' errors while auto-rolling back on exceptions.
+    """
+    if session.in_transaction():
+        async with session.begin_nested():
+            yield
+    else:
+        async with session.begin():
+            yield
+    await session.commit()
