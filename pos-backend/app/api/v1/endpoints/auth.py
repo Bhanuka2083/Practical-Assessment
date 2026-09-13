@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
+from app.models.enums import UserRole
 from app.schemas.auth import TokenResponse, UserRegister, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -28,6 +29,7 @@ async def register_user(
     user = User(
         email=payload.email,
         hashed_password=hash_password(payload.password),
+        role=UserRole.COMMON_USER
     )
     db.add(user)
     await db.commit()
@@ -51,5 +53,5 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_access_token(subject=user.id)
-    return TokenResponse(access_token=access_token, token_type="bearer")
+    access_token = create_access_token(subject=user.id, role=user.role.value)
+    return TokenResponse(access_token=access_token, token_type="bearer", role=user.role, email=user.email)

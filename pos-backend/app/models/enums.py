@@ -26,3 +26,7 @@ class MockPaymentOutcome(str, Enum):
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
     TIMEOUT = "TIMEOUT"
+
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    COMMON_USER = "common_user"

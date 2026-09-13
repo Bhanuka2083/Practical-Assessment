@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
+from app.core.security import require_admin
 from app.repositories.product_repo import ProductRepository
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
 
@@ -39,7 +40,7 @@ async def get_product(
 @router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 async def create_product(
     payload: ProductCreate,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     repo = ProductRepository(db)
@@ -56,7 +57,7 @@ async def create_product(
 async def update_product(
     product_id: int,
     payload: ProductUpdate,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     repo = ProductRepository(db)
@@ -71,7 +72,7 @@ async def update_product(
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_product(
     product_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_admin: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     repo = ProductRepository(db)

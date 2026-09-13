@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     )
 
     # API Metadata
-    PROJECT_NAME: str = "POS Backend"
+    PROJECT_NAME: str = "POS System API"
     API_V1_STR: str = "/api/v1"
 
     # PostgreSQL Connection Parameters

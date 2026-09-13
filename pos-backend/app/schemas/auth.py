@@ -1,5 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from app.models.enums import UserRole
 
 
 class UserRegister(BaseModel):
@@ -15,6 +16,8 @@ class UserLogin(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    role: UserRole
+    email: str
 
 
 class TokenPayload(BaseModel):
@@ -25,6 +28,7 @@ class TokenPayload(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
+    role: UserRole
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

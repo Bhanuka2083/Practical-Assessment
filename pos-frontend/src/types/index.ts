@@ -62,3 +62,12 @@ export interface PaymentResult {
   order_status: OrderStatus;
   message: string;
 }
+
+export type UserRole = 'admin' | 'common_user';
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  role: UserRole;
+  email: string;
+}

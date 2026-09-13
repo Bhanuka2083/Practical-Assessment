@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProducts } from "./api/products";
 import { getCart, addToCart, removeFromCart } from "./api/cart";
@@ -7,6 +7,9 @@ import { ProductCard } from "./components/ProductCard";
 import { CheckoutModal } from "./components/CheckoutModal";
 import { AuthModal } from "./components/AuthModal";
 import type { Order } from "./types";
+
+import { AdminPanel } from "./components/AdminPanel";
+import { Shield } from "lucide-react";
 
 import {
   ShoppingBag,
@@ -25,15 +28,20 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(() =>
+    localStorage.getItem("role"),
+  );
+  const [userEmail, setUserEmail] = useState<string | null>(() =>
+    localStorage.getItem("email"),
+  );
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
 
-  // 1. Fetch Real-time Catalog
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ["products"],
     queryFn: getProducts,
     refetchInterval: 5000,
   });
 
-  // 2. Fetch User Cart (Only runs when authenticated)
   const { data: cart } = useQuery({
     queryKey: ["cart"],
     queryFn: getCart,
@@ -43,33 +51,21 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("email");
     setToken(null);
+    setRole(null);
+    setUserEmail(null);
+    setIsAdminOpen(false);
     queryClient.removeQueries({ queryKey: ["cart"] });
   };
 
-  // 3. Add to Cart Mutation
-  // const addMutation = useMutation({
-  //   mutationFn: (productId: number) => addToCart(productId, 1),
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({ queryKey: ["cart"] });
-  //     queryClient.invalidateQueries({ queryKey: ["products"] });
-  //   },
-  //   onError: (err: any) => {
-  //     setAuthError(err.response?.data?.detail || "Failed to add item to cart");
-  //   },
-  // });
+  const handleAuthSuccess = () => {
+    setToken(localStorage.getItem("token"));
+    setRole(localStorage.getItem("role"));
+    setUserEmail(localStorage.getItem("email"));
+  };
 
-  // const handleAddToCart = (productId: number) => {
-  //   if (!token) {
-  //     setIsAuthOpen(true);
-  //     return;
-  //   }
-  //   addMutation.mutate(productId);
-  // };
-
-  // Inside src/App.tsx
-
-  // Update the mutation to accept arbitrary delta quantities
   const addMutation = useMutation({
     mutationFn: ({
       productId,
@@ -96,7 +92,6 @@ export default function App() {
     },
   });
 
-  // Inside src/App.tsx, add removeMutation:
   const removeMutation = useMutation({
     mutationFn: (productId: number) => removeFromCart(productId),
     onSuccess: () => {
@@ -121,7 +116,6 @@ export default function App() {
     addMutation.mutate({ productId, quantity });
   };
 
-  // 4. Checkout Reservation Mutation
   const checkoutMutation = useMutation({
     mutationFn: checkoutCart,
     onSuccess: (order: Order) => {
@@ -155,19 +149,44 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* RENDER ADMIN BUTTON ONLY FOR ADMIN ROLE */}
+            {token && role === "admin" && (
+              <button
+                onClick={() => setIsAdminOpen(true)}
+                className="text-xs bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500 text-indigo-300 font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm"
+              >
+                <Shield size={14} className="text-indigo-400" /> Admin Inventory
+              </button>
+            )}
+
             <button
               onClick={() =>
                 queryClient.invalidateQueries({ queryKey: ["products"] })
               }
               className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg border border-slate-700 flex items-center gap-1.5 transition-colors text-slate-300"
             >
-              <RefreshCw size={14} /> Refresh Catalog
+              <RefreshCw size={14} /> Refresh
             </button>
 
             {token ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs bg-slate-800 border border-slate-700 px-3 py-2 rounded-lg text-slate-300 flex items-center gap-1.5">
-                  <User size={14} className="text-emerald-400" /> Authenticated
+                  <User
+                    size={14}
+                    className={
+                      role === "admin" ? "text-indigo-400" : "text-emerald-400"
+                    }
+                  />
+                  <span>{userEmail}</span>
+                  <span
+                    className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                      role === "admin"
+                        ? "bg-indigo-900/60 text-indigo-300 border border-indigo-700"
+                        : "bg-slate-700 text-slate-300"
+                    }`}
+                  >
+                    {role === "admin" ? "Admin" : "User"}
+                  </span>
                 </span>
                 <button
                   onClick={handleLogout}
@@ -199,6 +218,9 @@ export default function App() {
               {authError}
             </div>
           )}
+
+          {/* Admin Panel Modal */}
+          {isAdminOpen && <AdminPanel onClose={() => setIsAdminOpen(false)} />}
 
           {productsLoading ? (
             <div className="text-slate-400">Loading catalog...</div>
@@ -325,7 +347,7 @@ export default function App() {
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
-        onAuthSuccess={() => setToken(localStorage.getItem("token"))}
+        onAuthSuccess={handleAuthSuccess}
       />
 
       {/* Checkout Modal */}
@@ -334,6 +356,10 @@ export default function App() {
           order={activeOrder}
           onClose={() => setActiveOrder(null)}
         />
+      )}
+
+      {isAdminOpen && role === "admin" && (
+        <AdminPanel onClose={() => setIsAdminOpen(false)} />
       )}
     </div>
   );

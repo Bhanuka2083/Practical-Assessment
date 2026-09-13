@@ -30,8 +30,10 @@ export const AuthModal: React.FC<Props> = ({
 
     try {
       if (isLoginView) {
-        const token = await login(email, password);
-        localStorage.setItem("token", token);
+        const data = await login(email, password);
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("role", data.role);
+        localStorage.setItem("email", data.email);
         queryClient.invalidateQueries({ queryKey: ["cart"] });
         queryClient.invalidateQueries({ queryKey: ["products"] });
         onAuthSuccess();
@@ -39,8 +41,10 @@ export const AuthModal: React.FC<Props> = ({
       } else {
         // Registration Flow: Register then automatically login
         await register(email, password);
-        const token = await login(email, password);
-        localStorage.setItem("token", token);
+        const data = await login(email, password);
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("role", data.role);
+        localStorage.setItem("email", data.email);
         queryClient.invalidateQueries({ queryKey: ["cart"] });
         queryClient.invalidateQueries({ queryKey: ["products"] });
         onAuthSuccess();

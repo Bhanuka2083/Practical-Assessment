@@ -59,20 +59,30 @@ def create_application() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
+        version="1.0.0"
     )
 
-    # Cross-Origin Resource Sharing (CORS) Configuration
-    # Tune allow_origins for your client application domain (e.g. http://localhost:3000)
+    origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["Idempotency-Key"],
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "Idempotency-Key",
+            "Accept",
+            "Origin",
+            "X-Requested-With",
+        ],
     )
 
-    # Include aggregated v1 routers
     app.include_router(api_router, prefix=settings.API_V1_STR)
 
     @app.get("/health", tags=["Health"])

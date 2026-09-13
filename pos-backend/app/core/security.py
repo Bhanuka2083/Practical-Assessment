@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.auth import TokenPayload
 
@@ -39,18 +40,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(pwd_bytes, hash_bytes)
 
 
-def create_access_token(subject: str | int, expires_delta: timedelta | None = None) -> str:
-    """Encodes JWT access token with expiration time and subject (user ID)."""
+def create_access_token(subject: int, role: str, expires_delta: timedelta | None = None) -> str:
     now = datetime.now(timezone.utc)
-    if expires_delta:
-        expire = now + expires_delta
-    else:
-        expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-
+    expire = now + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode = {
         "sub": str(subject),
-        "iat": int(now.timestamp()),
-        "exp": int(expire.timestamp()),
+        "role": role,
+        "exp": expire,
+        "iat": now,
     }
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
@@ -70,28 +67,24 @@ async def get_current_user(
     )
 
     try:
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-        )
-        user_id_str: str | None = payload.get("sub")
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id_str: str = payload.get("sub")
         if user_id_str is None:
             raise credentials_exception
-        token_data = TokenPayload(sub=user_id_str, exp=payload.get("exp"))
-    except JWTError:
+        user_id = int(user_id_str)
+    except (jwt.PyJWTError, ValueError):
         raise credentials_exception
 
-    try:
-        user_id = int(token_data.sub)
-    except (ValueError, TypeError):
-        raise credentials_exception
-
-    # Query user from DB
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-
     if user is None:
         raise credentials_exception
-
     return user
+
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Administrative privileges required",
+        )
+    return current_user
