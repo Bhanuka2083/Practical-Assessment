@@ -1,4 +1,3 @@
-// src/components/AdminPanel.tsx
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -262,7 +261,7 @@ export const AdminPanel: React.FC<Props> = ({ onClose }) => {
                                 name: e.target.value,
                               })
                             }
-                            className="bg-slate-800 border border-indigo-500 rounded px-2 py-1 text-white text-sm w-full max-w-[180px]"
+                            className="bg-slate-800 border border-indigo-500 rounded px-2 py-1 text-white text-sm w-full max-w-45"
                           />
                         ) : (
                           <span className="font-medium text-white">
