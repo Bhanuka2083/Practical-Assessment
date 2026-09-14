@@ -19,6 +19,8 @@ from fastapi.openapi.utils import get_openapi
 from app.core.config import settings
 from app.api.v1.router import api_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
 
 # Configure structured logging
 logging.basicConfig(
@@ -71,25 +73,38 @@ def create_application() -> FastAPI:
         version="1.0.0"
     )
 
-    origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+#     origins = [
+#     "http://localhost:5173",
+#     "http://127.0.0.1:5173",
+# ]
 
+
+#     app.add_middleware(
+#         CORSMiddleware,
+#         allow_origins=origins,
+#         allow_credentials=True,
+#         allow_methods=["*"],
+#         allow_headers=[
+#             "Content-Type",
+#             "Authorization",
+#             "Idempotency-Key",
+#             "Accept",
+#             "Origin",
+#             "X-Requested-With",
+#         ],
+#     )
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,
+        allow_origin_regex=r"https://.*\.vercel\.app",  # Matches all vercel preview & production domains
+        allow_origins=[
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "https://practical-assessment-seven-sepia.vercel.app",
+        ],
         allow_credentials=True,
         allow_methods=["*"],
-        allow_headers=[
-            "Content-Type",
-            "Authorization",
-            "Idempotency-Key",
-            "Accept",
-            "Origin",
-            "X-Requested-With",
-        ],
+        allow_headers=["*"],
     )
 
     security = HTTPBasic()
