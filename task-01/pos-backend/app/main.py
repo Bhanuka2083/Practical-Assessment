@@ -30,6 +30,7 @@ logging.basicConfig(
 logger = logging.getLogger("pos.main")
 
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
