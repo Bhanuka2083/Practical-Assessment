@@ -25,12 +25,12 @@ class ReservationSweeper:
             product_repo = ProductRepository(session)
 
             async with session.begin():
-                # 1. Fetch expired orders with SKIP LOCKED (non-blocking)
+                # Fetch expired orders with SKIP LOCKED (non-blocking)
                 expired_orders = await order_repo.get_expired_reserved_orders(batch_size=50)
                 if not expired_orders:
                     return 0
 
-                # 2. Extract and sort all unique product IDs across expired orders
+                # Extract and sort all unique product IDs across expired orders
                 product_ids: set[int] = set()
                 for order in expired_orders:
                     for item in order.items:
@@ -38,18 +38,18 @@ class ReservationSweeper:
 
                 sorted_product_ids = sorted(list(product_ids))
 
-                # 3. Lock products deterministically (ORDER BY id ASC FOR UPDATE)
+                # Lock products deterministically (ORDER BY id ASC FOR UPDATE)
                 locked_products = await product_repo.get_products_for_update(sorted_product_ids)
                 product_map = {p.id: p for p in locked_products}
 
-                # 4. Release held stock back to available pool
+                # Release held stock back to available pool
                 for order in expired_orders:
                     for item in order.items:
                         product = product_map.get(item.product_id)
                         if product:
                             await product_repo.release_reserved_stock(product, item.quantity)
 
-                    # 5. Transition order to terminal EXPIRED status
+                    # Transition order to terminal EXPIRED status
                     await order_repo.update_status(order, OrderStatus.EXPIRED)
 
                 logger.info(
