@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     POSTGRES_SERVER: str = "postgres"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = os.environ.get("POSTGRES_PASSWORD")
+    POSTGRES_PASSWORD: str = os.environ.get("POSTGRES_PASSWORD", "")
     POSTGRES_DB: str = "pos_db"
 
     # Security
