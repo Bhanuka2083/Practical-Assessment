@@ -72,7 +72,7 @@ async def get_current_user(
         if user_id_str is None:
             raise credentials_exception
         user_id = int(user_id_str)
-    except (jwt.PyJWTError, ValueError):
+    except (JWTError, ValueError):
         raise credentials_exception
 
     result = await db.execute(select(User).where(User.id == user_id))
