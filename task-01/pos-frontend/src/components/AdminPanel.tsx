@@ -146,7 +146,8 @@ export const AdminPanel: React.FC<Props> = ({ onClose }) => {
                 Inventory & Product Management
               </h2>
               <p className="text-xs text-slate-400">
-                Update item names, pricing, and live warehouse inventory
+                Admin can Update item names, pricing, and live warehouse
+                inventory
               </p>
             </div>
           </div>

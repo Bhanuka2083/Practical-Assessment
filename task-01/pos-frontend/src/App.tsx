@@ -226,7 +226,7 @@ export default function App() {
             <div className="text-slate-400">Loading catalog...</div>
           ) : products.length === 0 ? (
             <div className="text-slate-400 p-8 text-center bg-slate-800/50 rounded-2xl border border-slate-700">
-              Catalog is empty. Seed products in the backend database.
+              Catalog is empty.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -248,7 +248,7 @@ export default function App() {
         {/* Intent Cart Sidebar */}
         <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 h-fit sticky top-24">
           <h3 className="font-bold text-lg text-white mb-4">
-            Current Cart (Intent)
+            {userEmail}'s Cart
           </h3>
 
           {!token ? (
