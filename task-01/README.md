@@ -1,3 +1,8 @@
+# Live Link
+
+https://practical-assessment-seven-sepia.vercel.app/
+https://practical-assessment-seven-sepia.vercel.app/
+
 # POS Inventory & Order Management System
 
 A production-ready, full-stack Point of Sale (POS) and inventory tracking platform built with FastAPI, React (TypeScript), PostgreSQL, and Docker Compose. Designed with atomic stock deductions, automated schema migrations, and enterprise-grade container lifecycle management.
@@ -219,3 +224,12 @@ docker compose down
 ```
 
 > **Warning**: Never execute `docker compose down -v` unless you intentionally want to delete the persistent PostgreSQL volume and reset the database to an empty state.
+
+# Live Images
+
+![User 01 View](<LIVE IMG/User01.png>)
+![User 02 View](<LIVE IMG/User02.png>)
+![Admin panel](<LIVE IMG/Admin-panel.png>)
+![Payment Process](<LIVE IMG/Payment-process.png>)
+![Reserved Items](<LIVE IMG/Reserved-items.png>)
+![Payment Complete](<LIVE IMG/Payment-complete.png>)
